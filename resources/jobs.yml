@@ -1,0 +1,44 @@
+# Los jobs no declaran clúster: en Free Edition corren en cómputo serverless.
+resources:
+  jobs:
+    entrenamiento:
+      name: bakehouse-entrenamiento-${bundle.target}
+      tasks:
+        - task_key: features
+          notebook_task:
+            notebook_path: ../src/01_features.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+        - task_key: entrenar
+          depends_on:
+            - task_key: features
+          notebook_task:
+            notebook_path: ../src/02_train.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              model_name: ${var.model_name}
+
+    prediccion_diaria:
+      name: bakehouse-prediccion-diaria-${bundle.target}
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: America/Bogota
+        pause_status: ${var.estado_programacion}
+      tasks:
+        - task_key: features
+          notebook_task:
+            notebook_path: ../src/01_features.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+        - task_key: predecir
+          depends_on:
+            - task_key: features
+          notebook_task:
+            notebook_path: ../src/03_predict.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              model_name: ${var.model_name}

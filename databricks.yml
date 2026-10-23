@@ -1,0 +1,38 @@
+# Bundle del caso Bakehouse: pronóstico de ventas diarias por franquicia.
+# Free Edition tiene un solo workspace, así que "dev" y "prod" son dos
+# destinos del mismo workspace que escriben en esquemas distintos.
+bundle:
+  name: bakehouse-mlops
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Catálogo de Unity Catalog donde se crean tablas y modelos
+    default: workspace
+  schema:
+    description: Esquema destino (cambia según el ambiente)
+    default: bakehouse_dev
+  model_name:
+    description: Nombre del modelo registrado en Unity Catalog
+    default: ventas_diarias
+  estado_programacion:
+    description: PAUSED o UNPAUSED para el job de predicción diaria
+    default: PAUSED
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      schema: bakehouse_dev
+
+  prod:
+    mode: production
+    variables:
+      schema: bakehouse_prod
+      estado_programacion: UNPAUSED
+    workspace:
+      # Con un token personal, el modo production exige una ruta explícita.
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

@@ -1,0 +1,29 @@
+# CD: al hacer merge a main (o a mano desde la pestaña Actions).
+# Despliega a prod y corre el entrenamiento. La puerta de calidad está en
+# src/02_train.py: el alias @champion solo se mueve si el MAE mejora.
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-prod
+  cancel-in-progress: false
+
+jobs:
+  desplegar-prod:
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - name: Validar el bundle
+        run: databricks bundle validate -t prod
+      - name: Desplegar a prod
+        run: databricks bundle deploy -t prod
+      - name: Entrenar y aplicar la puerta de calidad
+        run: databricks bundle run entrenamiento -t prod
