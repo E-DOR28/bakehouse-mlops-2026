@@ -11,7 +11,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -q "mlflow>=3.1" "scikit-learn>=1.3"
+# MAGIC %pip install -q -U "mlflow>=3.1" "scikit-learn>=1.3"
 
 # COMMAND ----------
 
@@ -117,7 +117,14 @@ for nombre, estimador in candidatos.items():
         mlflow.log_param("modelo", nombre)
         mlflow.log_params(parametros)
         mlflow.log_metrics({f"val_{k}": v for k, v in m.items()})
-        info = mlflow.sklearn.log_model(pipeline, name="modelo", input_example=X_train.head(5))
+        # Formato seguro (skops): declaramos como confiable el tipo interno de los árboles
+        # porque el modelo lo entrenamos nosotros.
+        info = mlflow.sklearn.log_model(
+            pipeline,
+            name="modelo",
+            input_example=X_train.head(5),
+            skops_trusted_types=["sklearn.tree._tree.Tree"],
+        )
 
         resultados[nombre] = {"mae": m["mae"], "model_uri": info.model_uri, "run_id": run.info.run_id}
 
