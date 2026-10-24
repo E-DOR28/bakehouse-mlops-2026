@@ -19,6 +19,7 @@
 
 # COMMAND ----------
 
+#Un comentario
 dbutils.widgets.text("catalog", "workspace")
 dbutils.widgets.text("schema", "bakehouse_dev")
 #testing
