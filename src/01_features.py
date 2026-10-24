@@ -1,8 +1,12 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # 01 · Tabla de features
+# MAGIC # 01 · Feature table
 # MAGIC
 # MAGIC Construye una fila por **franquicia y día** a partir de `samples.bakehouse`.
+# MAGIC
+# MAGIC Es una **feature table** de Unity Catalog: una tabla Delta con llave primaria
+# MAGIC `(franchiseID, fecha)`. La llave es lo que la hace aparecer en **Features**, con su linaje
+# MAGIC hacia los modelos que la usan.
 # MAGIC
 # MAGIC | Columna | Rol |
 # MAGIC |---|---|
@@ -71,14 +75,50 @@ features = (
     .withColumn("ventas_dia_anterior", F.lag("ventas_totales", 1).over(ventana))
     .withColumn("promedio_3_dias", F.avg("ventas_totales").over(ventana.rowsBetween(-3, -1)))
     .join(franquicias, "franchiseID", "left")
-    .dropna(subset=["ventas_dia_anterior", "promedio_3_dias"])
+    .dropna(subset=["franchiseID", "fecha", "ventas_dia_anterior", "promedio_3_dias"])
 )
 
-(
-    features.write.mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable(tabla_features)
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Guardar como feature table
+# MAGIC - La primera vez se crea la tabla; las siguientes solo se reemplazan los **datos**.
+# MAGIC   Por eso no usamos `overwriteSchema`: borraría la llave primaria en cada ejecución.
+# MAGIC - Si la tabla no tiene llave primaria (por ejemplo, la creó una versión anterior de este
+# MAGIC   notebook), se la agregamos. Las columnas de la llave deben ser `NOT NULL`.
+
+# COMMAND ----------
+
+
+def tiene_llave_primaria(tabla: str) -> bool:
+    catalogo, esquema, nombre = tabla.split(".")
+    return (
+        spark.sql(
+            f"""
+            SELECT 1 FROM {catalogo}.information_schema.table_constraints
+            WHERE table_schema = '{esquema}' AND table_name = '{nombre}'
+              AND constraint_type = 'PRIMARY KEY'
+            """
+        ).count()
+        > 0
+    )
+
+
+features.write.mode("overwrite").saveAsTable(tabla_features)
+
+if not tiene_llave_primaria(tabla_features):
+    spark.sql(f"ALTER TABLE {tabla_features} ALTER COLUMN franchiseID SET NOT NULL")
+    spark.sql(f"ALTER TABLE {tabla_features} ALTER COLUMN fecha SET NOT NULL")
+    spark.sql(
+        f"ALTER TABLE {tabla_features} "
+        "ADD CONSTRAINT ventas_diarias_features_pk PRIMARY KEY (franchiseID, fecha)"
+    )
+    print("Llave primaria (franchiseID, fecha) agregada")
+
+spark.sql(
+    f"COMMENT ON TABLE {tabla_features} IS "
+    "'Features de ventas diarias por franquicia (caso Bakehouse). Una fila por franquicia y día.'"
 )
 
-print(f"{features.count()} filas escritas en {tabla_features}")
+print(f"{features.count()} filas escritas en la feature table {tabla_features}")
 display(spark.table(tabla_features).orderBy("franchiseID", "fecha").limit(20))

@@ -8,7 +8,7 @@ bakehouse-mlops/
 ├── databricks.yml            # Bundle: variables y ambientes dev / prod
 ├── resources/jobs.yml        # Jobs: entrenamiento y predicción diaria
 ├── src/
-│   ├── 01_features.py        # Tabla Delta de features (franquicia × día)
+│   ├── 01_features.py        # Feature table con llave (franchiseID, fecha)
 │   ├── 02_train.py           # 3 runs en MLflow, registro en UC y puerta de calidad
 │   ├── 03_predict.py         # Predicción con @champion y tabla de monitoreo
 │   └── utils_ventas.py       # Funciones puras (se prueban en CI)
@@ -23,7 +23,7 @@ bakehouse-mlops/
 | Objeto | dev | prod |
 |---|---|---|
 | Esquema | `workspace.bakehouse_dev` | `workspace.bakehouse_prod` |
-| Tabla de features | `ventas_diarias_features` | igual |
+| Feature table (visible en **Features**) | `ventas_diarias_features`, llave `(franchiseID, fecha)` | igual |
 | Modelo en Unity Catalog | `ventas_diarias` con `@champion` / `@challenger` | igual |
 | Tablas de salida | `predicciones_ventas`, `metricas_monitoreo` | igual |
 | Experimento MLflow | `/Users/<tu_usuario>/bakehouse-ventas-bakehouse_dev` | `…-bakehouse_prod` |
